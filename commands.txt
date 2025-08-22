@@ -135,6 +135,15 @@ keytool -importcert -trustcacerts \
   -keystore truststore.jks \
   -storepass changeit
 
+java \
+ -Djavax.net.ssl.keyStore=/absolute/path/client-keystore.p12 \
+ -Djavax.net.ssl.keyStorePassword=<p12_password> \
+ -Djavax.net.ssl.keyStoreType=PKCS12 \
+ -Djavax.net.ssl.trustStore=/absolute/path/truststore.jks \
+ -Djavax.net.ssl.trustStorePassword=<truststore_password> \
+ -jar target/your-fat-jar.jar -Denv=dev
+
+
 # liquibase.properties (or assembled URL in code)
 url=jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=YOUR_PROJECT;OAuthType=4;DefaultDataset=YOUR_DATASET;BYOID_TokenUri=https://sts.googleapis.com/v1/token;BYOID_AudienceUri=//iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID;BYOID_SA_Impersonation_Uri=https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/YOUR_SA:generateAccessToken;BYOID_CredentialSource={"url":"https://your.mtls.endpoint.example.com/token"}
 

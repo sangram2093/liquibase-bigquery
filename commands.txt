@@ -107,3 +107,10 @@ keytool -importkeystore -srckeystore corp_bundle.p12 -srcstoretype PKCS12 \
 Then set -Djavax.net.ssl.trustStore=/path/to/corp_truststore.jks and matching password in dbeaver.ini.
 
 If you paste the first 30–50 lines of your current Help → About → Configuration (redacting usernames), I’ll confirm whether DBeaver is picking up your truststore. Or, if you can share the subject/issuer of the proxy cert from step A (/tmp/gcs_chain.pem), I’ll tell you exactly which CA to import.
+
+gcloud iam workload-identity-pools create-cred-config \
+  projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID \
+  --service-account=SA_NAME@PROJECT_ID.iam.gserviceaccount.com \
+  --output-file=/path/external_account.json \
+  --credential-source-file=/path/to/oidc_or_jwt_token.txt
+

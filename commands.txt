@@ -1,0 +1,109 @@
+Here’s a tight, do-this-and-it-will-work plan.
+
+A) Prove where the break is (2 quick commands)
+# 1) If this fails: it’s network/SSL (proxy) in general
+curl -I https://storage.googleapis.com/simba-bq-release/jdbc/SimbaJDBCDriverforGoogleBigQuery42_1.5.4.1008.zip
+
+# 2) Show the certificate(s) your connection is actually getting
+echo | openssl s_client -showcerts -servername storage.googleapis.com -connect storage.googleapis.com:443 2>/dev/null | sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p' > /tmp/gcs_chain.pem
+open /tmp/gcs_chain.pem
+
+
+If the certs you see are your corporate proxy’s (not a Google CA), you must import that proxy root CA into the exact JRE DBeaver uses.
+
+B) Import the right CA into the bundled DBeaver JRE
+
+Find the cacerts that DBeaver actually uses:
+
+find /Applications/DBeaver.app -type f -name cacerts
+
+
+Typical path resembles:
+
+/Applications/DBeaver.app/Contents/Eclipse/plugins/org.eclipse.justj.openjdk.*.jre*/jre/lib/security/cacerts
+
+
+Import your corporate root CA (not the leaf cert from gcs_chain.pem—use the root your proxy issued from). If you only have a full chain, import the top-most issuing CA.
+
+# default password for cacerts is: changeit
+sudo "/Applications/DBeaver.app/Contents/Eclipse/plugins/<...>/jre/bin/keytool" \
+  -importcert \
+  -file /path/to/CorpRootCA.crt \
+  -alias corp-root-ca \
+  -keystore "/Applications/DBeaver.app/Contents/Eclipse/plugins/<...>/jre/lib/security/cacerts" \
+  -storepass changeit
+
+
+Restart DBeaver.
+
+Tip: If you’re unsure which CA to import, share /tmp/gcs_chain.pem with your network team; they’ll point you to the correct root CA (or give you a single PEM to import).
+
+C) Make sure DBeaver really uses that JRE/truststore
+
+macOS app icons can ignore command-line flags. Force it via dbeaver.ini.
+
+Edit:
+
+/Applications/DBeaver.app/Contents/Eclipse/dbeaver.ini
+
+
+Add these lines (adjust paths!) — put -vm above -vmargs; put system props below -vmargs:
+
+-vm
+/Applications/DBeaver.app/Contents/Eclipse/plugins/org.eclipse.justj.openjdk.macosx.x86_64.jre_*/jre/bin/java
+-vmargs
+-Djavax.net.ssl.trustStore=/Applications/DBeaver.app/Contents/Eclipse/plugins/org.eclipse.justj.openjdk.macosx.x86_64.jre_*/jre/lib/security/cacerts
+-Djavax.net.ssl.trustStorePassword=changeit
+# (optional debug—remove after diagnosing)
+-Djavax.net.debug=ssl,handshake,trustmanager
+
+
+Launch DBeaver again. To verify it picked this up:
+Help → About DBeaver → Installation Details → Configuration and search for javax.net.ssl.trustStore.
+
+D) If you’re behind an auth proxy, set it in DBeaver
+
+Preferences → General → Network Connections
+
+Active Provider: Manual (or Native if macOS proxy is configured)
+
+HTTPS proxy host/port (+ auth if required)
+
+Apply & restart.
+
+E) Unblock yourself now: install the driver manually (no download)
+
+Even with the PKIX issue, you can be productive immediately:
+
+Download the driver ZIP in your browser (which already trusts the proxy):
+
+SimbaJDBCDriverforGoogleBigQuery42_1.5.4.1008.zip
+
+Unzip it; you’ll get something like:
+
+googlebigqueryjdbc42.jar (+ a few dependency jars)
+
+In DBeaver:
+
+Database → Driver Manager → Google BigQuery
+
+Libraries tab → Add File… → add googlebigqueryjdbc42.jar (and any companion jars)
+
+OK. Now create your BigQuery connection.
+
+F) Still failing? Two quick edge fixes
+
+Some corporate SSL boxes stumble on TLS 1.3. Add to dbeaver.ini under -vmargs:
+
+-Djdk.tls.client.protocols=TLSv1.2
+
+
+If your security team gives you a PKCS#12 trust bundle instead of PEM, import it into a new truststore and point DBeaver at it:
+
+keytool -importkeystore -srckeystore corp_bundle.p12 -srcstoretype PKCS12 \
+        -destkeystore /path/to/corp_truststore.jks -deststoretype JKS
+
+
+Then set -Djavax.net.ssl.trustStore=/path/to/corp_truststore.jks and matching password in dbeaver.ini.
+
+If you paste the first 30–50 lines of your current Help → About → Configuration (redacting usernames), I’ll confirm whether DBeaver is picking up your truststore. Or, if you can share the subject/issuer of the proxy cert from step A (/tmp/gcs_chain.pem), I’ll tell you exactly which CA to import.

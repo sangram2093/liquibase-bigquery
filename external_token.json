@@ -1,0 +1,23 @@
+{
+  "type": "external_account",
+  "audience": "//iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>",
+  "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+  "token_url": "https://sts.googleapis.com/v1/token",
+
+  // If you impersonate a GCP service account (recommended):
+  "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/<SERVICE_ACCOUNT_EMAIL>:generateAccessToken",
+
+  "credential_source": {
+    // Option A: read a fresh OIDC *subject token* from a local file
+    "file": "/absolute/path/to/subject_token.jwt"
+
+    /* ---- OR Option B (instead of "file"): fetch token from a URL ----
+    "url": "https://<your-idp-token-endpoint>?audience=<ENCODED_AUDIENCE>",
+    "headers": { "Authorization": "Bearer <whatever-your-idp-requires>" },
+    "format": {
+      "type": "json",
+      "subject_token_field_name": "<the_json_field_that_contains_the_token>"
+    }
+    */
+  }
+}
